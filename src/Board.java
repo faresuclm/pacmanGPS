@@ -23,6 +23,12 @@ public class Board extends JPanel implements ActionListener {
     }
 
     @Override
+    public void addNotify() {
+        super.addNotify();
+        requestFocusInWindow();
+    }
+
+    @Override
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
         drawBoard(g);
