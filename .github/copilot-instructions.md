@@ -1,55 +1,27 @@
-# Instrucciones para GitHub Copilot
-
-## Contexto del Proyecto
-
-Este es un proyecto de **Pac-Man** desarrollado en **Java** utilizando **Swing** para la interfaz gráfica. Es un juego clásico con las siguientes características:
-
-- Laberinto donde Pac-Man y los fantasmas se mueven
-- Control de Pac-Man mediante teclas de flecha
-- Fantasmas con movimiento automático
-- Sistema de puntuación con puntos coleccionables
-- Condiciones de victoria y derrota
-
-## Estructura del Proyecto
-
-```
-src/
-├── Game.java         # Clase principal: inicializa la ventana y el juego
-├── Board.java        # Lógica y renderizado del tablero
-├── Pacman.java       # Lógica y renderizado de Pac-Man
-├── Ghost.java        # Lógica y renderizado de los fantasmas
-└── Direction.java    # Enum para las direcciones de movimiento
-```
-
-## Directrices de Código
-
-### Estilo de Código
-- Utilizar **Java 8** o superior
-- Seguir las convenciones de nomenclatura de Java (camelCase para métodos y variables, PascalCase para clases)
-- Comentar el código en **español**
-- Mantener los métodos cortos y con una única responsabilidad
-
-### Arquitectura
-- Mantener la separación de responsabilidades entre clases
-- `Board.java` maneja la lógica del juego y el renderizado del tablero
-- `Pacman.java` y `Ghost.java` manejan sus propias entidades
-- `Direction.java` define las direcciones de movimiento como enum
-
-### Interfaz Gráfica
-- Utilizar **Java Swing** para todos los componentes de UI
-- El renderizado se realiza mediante el método `paintComponent`
-- Mantener la interfaz sencilla y modular
-
-## Preferencias de Desarrollo
-
-- Priorizar código limpio y legible sobre optimización prematura
-- Incluir manejo de errores apropiado
-- Documentar métodos públicos con JavaDoc
-- Mantener compatibilidad con Java 8
-
-## Funcionalidades Futuras a Considerar
-
-- Mejoras en la IA de los fantasmas
-- Nuevos niveles y mapas
-- Efectos de sonido
-- Power-ups clásicos del juego
+Este repositorio del juego de PacMan contiene solo código Java, a partir de la carpeta src/.
+Cuando se te asigne una tarea, sigue estas guías:
+## Estructura del proyecto
+- `/src/main/java` : Código fuente principal.
+- `/src/test/java` : Pruebas unitarias organizadas por paquete.
+- `pom.xml` : Archivo de configuración de Maven.
+## Convenciones para pruebas unitarias
+1. **Ubicación**: Las clases de prueba deben estar en `/src/test/java`, replicando la estructura
+de paquetes del código fuente.
+2. **Nomenclatura**: Cada clase de prueba debe terminar en `Test`, por ejemplo:
+`UserServiceTest`.
+3. **Cobertura mínima**: Se espera una cobertura del 100% para clases nuevas. Usa `@Test`
+para cada método relevante.
+4. **Aislamiento**: Las pruebas deben ser independientes y no depender de estado compartido.
+5. **Validación**: Ejecuta `mvn test` para validar los cambios antes de cada commit.
+6. **Estilo**: Sigue las convenciones de código de Java (nombres en camelCase, clases en
+PascalCase).
+## Herramientas y dependencias
+- Java 17
+- JUnit 5 para pruebas unitarias
+- Maven 3.8+
+- JaCoCo para análisis de cobertura
+## Flujo de desarrollo
+- Formatear código: `mvn formatter:format`
+- Ejecutar pruebas: `mvn test`
+- Ver cobertura: `mvn jacoco:report`
+- Validación completa: `mvn verify`
