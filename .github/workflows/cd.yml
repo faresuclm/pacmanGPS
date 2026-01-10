@@ -1,0 +1,94 @@
+# Workflow: CD - Deploy GitHub Pages landing with game .jar
+# Trigger: runs when ci-ct.yml finishes (workflow_run) and only proceeds if that run concluded 'success'
+name: CD - Publish game landing (GitHub Pages)
+
+on:
+  workflow_run:
+    workflows:
+      - "ci-ct.yml"
+    types:
+      - completed
+
+permissions:
+  contents: read
+  pages: write
+  actions: read
+
+jobs:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Instalar utilidades necesarias
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unzip jq
+
+      - name: Descargar y extraer artifact del run anterior
+        env:
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Repo: $REPO"
+          echo "Workflow run id: $RUN_ID"
+
+          api_url="https://api.github.com/repos/${REPO}/actions/runs/${RUN_ID}/artifacts"
+          echo "Consultando artifacts: $api_url"
+          curl -s -H "Authorization: token ${TOKEN}" "$api_url" > artifacts.json
+          cat artifacts.json
+
+          # Tomamos el primer artifact disponible (si hay varios, puedes adaptar la elección)
+          artifact_id=$(jq -r '.artifacts[0].id // empty' artifacts.json)
+          if [ -z "$artifact_id" ]; then
+            echo "No se encontraron artifacts para el run ${RUN_ID}. Asegúrate de que ci-ct.yml suba el .jar como artifact."
+            exit 1
+          fi
+
+          echo "Artifact id encontrado: $artifact_id"
+          download_url="https://api.github.com/repos/${REPO}/actions/artifacts/${artifact_id}/zip"
+          curl -s -L -H "Authorization: token ${TOKEN}" -o artifact.zip "$download_url"
+
+          mkdir -p artifact
+          unzip -o artifact.zip -d artifact
+
+          mkdir -p site/downloads
+          jar=$(find artifact -type f -name "*.jar" | head -n 1 || true)
+          if [ -z "$jar" ]; then
+            echo "No se encontró ningún .jar dentro del artifact."
+            exit 1
+          fi
+
+          cp "$jar" site/downloads/
+          echo "JAR copiado a site/downloads: $(ls -l site/downloads)"
+
+      - name: Crear landing page (index.html)
+        run: |
+          JARFILE=$(basename site/downloads/*.jar)
+          mkdir -p site
+          cat > site/index.html <<EOF
+          <!doctype html>
+          <html lang="es">
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width,initial-scale=1">
+              <title>PacMan GPS - Descarga</title>
+            </head>
+            <body>
+              <h1>PacMan GPS</h1>
+              <p>Descarga el juego (.jar) desde el siguiente enlace:</p>
+              <p><a href="./downloads/${JARFILE}" download>Descargar PacMan GPS (.jar)</a></p>
+              <hr>
+              <p>Generado automáticamente por el workflow <code>cd.yml</code>.</p>
+            </body>
+          </html>
+          EOF
+          echo "Página creada. Archivo jar: ${JARFILE}"
+
+      - name: Subir artefacto a Pages
+        uses: actions/upload-pages-artifact@v1
+        with:
+          path: site
+
+      - name: Desplegar en GitHub Pages
+        uses: actions/deploy-pages@v1
