@@ -4,7 +4,7 @@ name: CD - Publish game landing (GitHub Pages)
 on:
   workflow_run:
     workflows:
-      - "ci-ct.yml"
+      - "CI/CT"
     types:
       - completed
 
@@ -14,86 +14,150 @@ permissions:
   actions: read
 
 jobs:
-  deploy:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+  build:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' }}
     runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Cache Maven local repository
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-m2-
+
+      - name: Build package
+        run: |
+          mvn clean package -DskipTests
+
+      - id: find-jar
+        name: Buscar JAR generado
+        run: |
+          jar=$(ls target/*.jar 2>/dev/null | head -n 1 || true)
+          if [ -z "$jar" ]; then
+            echo "No se encontró ningún .jar en target/."
+            exit 1
+          fi
+          echo "JAR encontrado: $jar"
+          echo "JAR=$jar" >> $GITHUB_OUTPUT
+          echo "JAR_NAME=$(basename $jar)" >> $GITHUB_OUTPUT
+
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: built-jar
+          path: ${{ steps.find-jar.outputs.JAR }}
+          retention-days: 1
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-      - name: Instalar utilidades necesarias
+      - name: Download JAR artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: built-jar
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Crear estructura de sitio
         run: |
-          sudo apt-get update
-          sudo apt-get install -y unzip jq curl
-
-      - name: Descargar artifact 'pacman-jar' del workflow run anterior
-        env:
-          REPO: ${{ github.repository }}
-          RUN_ID: ${{ github.event.workflow_run.id }}
-          TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "Repo: $REPO"
-          echo "Workflow run id: $RUN_ID"
-
-          api_url="https://api.github.com/repos/${REPO}/actions/runs/${RUN_ID}/artifacts"
-          echo "Consultando artifacts: $api_url"
-          resp=$(curl -s -H "Authorization: token ${TOKEN}" "$api_url")
-          echo "$resp" | jq -r '.artifacts' > /tmp/artifacts.json
-
-          # Buscar artifact con nombre pacman-jar (caída a primer artifact si no existe)
-          artifact_id=$(echo "$resp" | jq -r '.artifacts[] | select(.name=="pacman-jar") | .id' || true)
-          if [ -z "$artifact_id" ]; then
-            artifact_id=$(echo "$resp" | jq -r '.artifacts[0].id // empty')
-            echo "No se encontró artifact llamado 'pacman-jar'. Usando el primer artifact disponible (si existe)."
-          fi
-
-          if [ -z "$artifact_id" ]; then
-            echo "No se encontraron artifacts para el run ${RUN_ID}. Asegúrate de que ci-ct.yml suba el .jar como artifact."
-            exit 1
-          fi
-
-          echo "Artifact id encontrado: $artifact_id"
-          download_url="https://api.github.com/repos/${REPO}/actions/artifacts/${artifact_id}/zip"
-          curl -s -L -H "Authorization: token ${TOKEN}" -o artifact.zip "$download_url"
-
-          mkdir -p artifact
-          unzip -o artifact.zip -d artifact
-
           mkdir -p site/downloads
-          jar=$(find artifact -type f -name "*.jar" | head -n 1 || true)
+          jar=$(ls *.jar 2>/dev/null | head -n 1)
           if [ -z "$jar" ]; then
-            echo "No se encontró ningún .jar dentro del artifact."
+            echo "No se encontró ningún .jar."
             exit 1
           fi
-
           cp "$jar" site/downloads/
-          echo "JAR copiado a site/downloads: $(ls -l site/downloads)"
+          JARFILE=$(basename "$jar")
+          echo "JARFILE=$JARFILE" >> $GITHUB_ENV
+          echo "JAR copiado a site/downloads: $JARFILE"
 
       - name: Crear landing page (index.html)
         run: |
-          JARFILE=$(basename site/downloads/*.jar)
-          mkdir -p site
           cat > site/index.html <<EOF
           <!doctype html>
           <html lang="es">
-            <head>
+          <head>
               <meta charset="utf-8">
               <meta name="viewport" content="width=device-width,initial-scale=1">
-              <title>PacMan GPS - Descarga</title>
-            </head>
-            <body>
-              <h1>PacMan GPS</h1>
-              <p>Descarga el juego (.jar) desde el siguiente enlace:</p>
-              <p><a href="./downloads/${JARFILE}" download>Descargar PacMan GPS (.jar)</a></p>
-              <hr>
-              <p>Generado automáticamente por el workflow <code>cd.yml</code>.</p>
-            </body>
+              <title>PacMan GPS — Descarga</title>
+              <style>
+                  :root { --bg:#071327; --card:#0f1724; --accent:#ffcc00; --muted:#9aa4b2; }
+                  body { margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial; background:linear-gradient(180deg,#051026 0%, #07192f 100%); color:#e6eef6; display:flex; align-items:center; justify-content:center; min-height:100vh; }
+                  .card { width:min(920px,94%); background:rgba(10,16,28,0.7); padding:36px; border-radius:12px; box-shadow:0 10px 40px rgba(2,6,23,0.6); backdrop-filter: blur(6px); }
+                  h1 { margin:0 0 8px; font-size:28px; color:var(--accent); }
+                  p.lead { color:var(--muted); margin:0 0 18px; line-height:1.6; }
+                  .buttons { display:flex; gap:12px; flex-wrap:wrap; margin-top:18px; }
+                  .btn { display:inline-flex; align-items:center; gap:10px; background:var(--accent); color:#071018; padding:12px 20px; border-radius:8px; text-decoration:none; font-weight:600; box-shadow:0 6px 18px rgba(255,204,0,0.14); transition:transform 0.2s, box-shadow 0.2s; }
+                  .btn:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(255,204,0,0.25); }
+                  .btn.secondary { background:transparent; color:var(--muted); border:1px solid rgba(255,255,255,0.1); }
+                  .btn.secondary:hover { background:rgba(255,255,255,0.05); color:#e6eef6; }
+                  small { color:var(--muted); display:block; margin-top:12px; font-size:13px; }
+                  footer { margin-top:24px; color:var(--muted); font-size:13px; border-top:1px solid rgba(255,255,255,0.1); padding-top:18px; }
+                  code { background:rgba(255,255,255,0.08); padding:4px 8px; border-radius:6px; font-family:'Courier New',monospace; font-size:13px; color:var(--accent); }
+                  .info-box { background:rgba(255,204,0,0.1); border-left:3px solid var(--accent); padding:12px 16px; margin:18px 0; border-radius:6px; }
+              </style>
+          </head>
+          <body>
+          <div class="card" role="main">
+              <header>
+                  <h1>🎮 PacMan GPS</h1>
+                  <p class="lead">Descarga el juego compilado en formato JAR. Requiere Java 17 o superior para ejecutarse.</p>
+              </header>
+
+              <div class="info-box">
+                  <strong>📦 Última versión disponible</strong><br>
+                  El archivo JAR se genera automáticamente con cada push a la rama main mediante GitHub Actions.
+              </div>
+
+              <div class="buttons">
+                  <a class="btn" href="./downloads/${JARFILE}" download>⬇️ Descargar JAR</a>
+                  <a class="btn secondary" href="https://github.com/faresuclm/pacmanGPS/releases" target="_blank" rel="noopener">📦 Ver releases en GitHub</a>
+                  <a class="btn secondary" href="https://github.com/faresuclm/pacmanGPS" target="_blank" rel="noopener">🔗 Ver código fuente</a>
+              </div>
+
+              <small>
+                  <strong>Instrucciones de instalación:</strong><br>
+                  1. Descarga el archivo JAR<br>
+                  2. Asegúrate de tener Java 17 o superior instalado<br>
+                  3. Ejecuta: <code>java -jar ${JARFILE}</code>
+              </small>
+
+              <footer>
+                  <p>Este sitio se despliega automáticamente mediante GitHub Actions cuando el workflow CI/CT completa exitosamente.</p>
+              </footer>
+          </div>
+          </body>
           </html>
           EOF
-          echo "Página creada. Archivo jar: ${JARFILE}"
+          echo "Landing page creada con archivo jar: ${JARFILE}"
 
-      - name: Subir carpeta 'site' para GitHub Pages
+      - name: Upload artifact for GitHub Pages
         uses: actions/upload-pages-artifact@v1
         with:
           path: site
 
-      - name: Desplegar en GitHub Pages
-        uses: actions/deploy-pages@v1
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v3
+
+      - name: Notify deployment URL
+        run: |
+          echo "✅ Despliegue completado exitosamente"
+          echo "URL de GitHub Pages: ${{ steps.deployment.outputs.page_url }}"

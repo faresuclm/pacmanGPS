@@ -2,9 +2,9 @@ name: CI/CT
 
 on:
   push:
-    branches: ["**"]
+    branches: ["main", "develop"]
   pull_request:
-    branches: ["**"]
+    branches: ["main", "develop"]
 
 jobs:
   build:
@@ -15,11 +15,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Java 11 (Temurin)
+      - name: Setup Java 17 (Temurin)
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '11'
+          java-version: '17'
 
       - name: Cache Maven local repository
         uses: actions/cache@v4
@@ -29,18 +29,20 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-m2-
 
-      - name: Set up Maven settings (if needed)
-        run: echo "Using default Maven settings"
-
-      - name: Build and run tests
+      - name: Install dependencies and build project
         run: |
-          mvn -B -V -e test
+          mvn clean install
+        continue-on-error: false
 
-      - name: Package (skip tests if already run)
-        run: mvn -B package -DskipTests=true
+      - name: Run unit tests
+        run: |
+          mvn test
+        continue-on-error: false
 
-      - name: Resultado
-        run: echo "Maven build/test completado. Si las pruebas existen, se ejecutaron con 'mvn test'."
+      - name: Generate coverage report with JaCoCo
+        run: |
+          mvn jacoco:report
+        continue-on-error: false
 
       - id: find-jar
         name: Buscar JAR generado en target/
@@ -61,6 +63,31 @@ jobs:
           name: pacman-jar
           path: ${{ steps.find-jar.outputs.JAR }}
           retention-days: 30
+
+      - name: Upload coverage report as artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: target/site/jacoco/
+          retention-days: 30
+
+      - name: Cleanup temporary files
+        if: always()
+        run: |
+          echo "Limpiando archivos temporales..."
+          rm -rf ~/.m2/repository/org/apache/maven/plugins || true
+          echo "Limpieza completada"
+
+      - name: Report workflow status
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Todas las pruebas pasaron correctamente"
+          else
+            echo "❌ El workflow falló. Revisa los logs anteriores para más detalles."
+            exit 1
+          fi
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
