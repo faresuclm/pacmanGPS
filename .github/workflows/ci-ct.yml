@@ -41,3 +41,7 @@ jobs:
 
       - name: Resultado
         run: echo "Maven build/test completado. Si las pruebas existen, se ejecutaron con 'mvn test'."
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
