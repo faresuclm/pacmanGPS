@@ -1,0 +1,43 @@
+name: CI/CT
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  build:
+    name: Build and Test (Maven)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 11 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+
+      - name: Cache Maven local repository
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-m2-
+
+      - name: Set up Maven settings (if needed)
+        run: echo "Using default Maven settings"
+
+      - name: Build and run tests
+        run: |
+          mvn -B -V -e test
+
+      - name: Package (skip tests if already run)
+        run: mvn -B package -DskipTests=true
+
+      - name: Resultado
+        run: echo "Maven build/test completado. Si las pruebas existen, se ejecutaron con 'mvn test'."

@@ -1,5 +1,7 @@
 # PacmanProject
 
+[![CI/CT](https://github.com/faresuclm/pacmanGPS/actions/workflows/ci-ct.yml/badge.svg?branch=main)](https://github.com/faresuclm/pacmanGPS/actions/workflows/ci-ct.yml)
+
 Juego básico de Pac-Man desarrollado en Java utilizando Swing para la interfaz gráfica.
 
 ## Características
