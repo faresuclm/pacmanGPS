@@ -1,0 +1,60 @@
+name: Build JAR & publish to docs (GitHub Pages)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+
+      - name: Build (Maven)
+        run: |
+          set -e
+          mvn -B package -DskipTests
+          if [ -f target/pacmanGPS.jar ]; then
+            JAR=target/pacmanGPS.jar
+          else
+            JAR=$(find target -type f -name "*.jar" | head -n 1 || true)
+          fi
+          if [ -z "${JAR}" ]; then
+            echo "No se encontró ningún JAR en target/."
+            exit 1
+          fi
+          echo "JAR encontrado: $JAR"
+          mkdir -p docs
+          cp "$JAR" docs/pacmanGPS.jar
+
+      - name: Ensure docs/index.html present
+        run: |
+          if [ ! -f docs/index.html ]; then
+            cat > docs/index.html <<'HTML'
+            <!doctype html><meta charset="utf-8"><title>pacmanGPS</title><body><h1>pacmanGPS</h1><p><a href="pacmanGPS.jar" download>Descargar JAR</a></p></body></html>HTML
+          fi
+
+      - name: Commit and push docs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/pacmanGPS.jar docs/index.html || true
+          git commit -m "ci: build jar and publish to docs for GitHub Pages" || echo "No hay cambios para commitear"
+          git push origin HEAD:main

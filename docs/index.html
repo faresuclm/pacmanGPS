@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>pacmanGPS — Descarga</title>
+    <style>
+        :root { --bg:#071327; --card:#0f1724; --accent:#ffcc00; --muted:#9aa4b2; }
+        body { margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial; background:linear-gradient(180deg,#051026 0%, #07192f 100%); color:#e6eef6; display:flex; align-items:center; justify-content:center; min-height:100vh; }
+        .card { width:min(920px,94%); background:rgba(10,16,28,0.7); padding:36px; border-radius:12px; box-shadow:0 10px 40px rgba(2,6,23,0.6); backdrop-filter: blur(6px); }
+        h1 { margin:0 0 8px; font-size:28px; }
+        p.lead { color:var(--muted); margin:0 0 18px; }
+        .buttons { display:flex; gap:12px; flex-wrap:wrap; margin-top:18px; }
+        .btn { display:inline-flex; align-items:center; gap:10px; background:var(--accent); color:#071018; padding:10px 16px; border-radius:8px; text-decoration:none; font-weight:600; box-shadow:0 6px 18px rgba(255,204,0,0.14); }
+        .btn.secondary { background:transparent; color:var(--muted); border:1px solid rgba(255,255,255,0.04); }
+        small { color:var(--muted); display:block; margin-top:12px; }
+        footer { margin-top:18px; color:var(--muted); font-size:13px; }
+        code { background:rgba(255,255,255,0.03); padding:3px 6px; border-radius:6px; font-family:monospace; }
+    </style>
+</head>
+<body>
+<div class="card" role="main">
+    <header>
+        <h1>pacmanGPS</h1>
+        <p class="lead">Descarga el JAR compilado para ejecutar la aplicación. Recomendado Java 17. Si prefieres, consulta las Releases en GitHub.</p>
+    </header>
+
+    <div class="buttons">
+        <!-- El workflow colocará el artefacto en docs/pacmanGPS.jar -->
+        <a class="btn" href="pacmanGPS.jar" download>⬇️ Descargar JAR</a>
+        <a class="btn secondary" href="https://github.com/faresuclm/pacmanGPS/releases" target="_blank" rel="noopener">Ver releases en GitHub</a>
+    </div>
+
+    <small>Instrucciones rápidas: instalar Java 17 y ejecutar: <code>java -jar pacmanGPS.jar</code></small>
+
+    <footer>
+        <p>Si quieres que subamos automáticamente nuevos JARs, el workflow de GitHub Actions compilará y actualizará esta página.</p>
+    </footer>
+</div>
+</body>
+</html>
