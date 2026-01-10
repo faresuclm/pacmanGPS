@@ -42,11 +42,25 @@ jobs:
       - name: Resultado
         run: echo "Maven build/test completado. Si las pruebas existen, se ejecutaron con 'mvn test'."
 
+      - id: find-jar
+        name: Buscar JAR generado en target/
+        run: |
+          echo "Contenido de target/:"
+          ls -la target || true
+          jar=$(ls target/*.jar 2>/dev/null | head -n 1 || true)
+          if [ -z "$jar" ]; then
+            echo "No se encontró ningún .jar en target/. Asegúrate de que la build genera un .jar."
+            exit 1
+          fi
+          echo "JAR encontrado: $jar"
+          echo "JAR=$jar" >> $GITHUB_OUTPUT
+
       - name: Subir .jar como artifact
         uses: actions/upload-artifact@v4
         with:
           name: pacman-jar
-          path: target/pacman.jar   # ajusta la ruta al .jar generado por tu build
+          path: ${{ steps.find-jar.outputs.JAR }}
+          retention-days: 30
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
